@@ -18,7 +18,10 @@ def draw_map():
         for col_index, tile in enumerate(row):
             x = col_index * TILE_SIZE
             y = row_index * TILE_SIZE
-            screen.blit(assets[tile], (x, y))
+            tile_type = tile["type"]
+            rotation = tile["rotation"]
+            rotated_tile = pygame.transform.rotate(assets[tile_type], rotation)
+            screen.blit(rotated_tile, (x, y))
 
 
 running = True
