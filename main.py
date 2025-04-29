@@ -15,6 +15,8 @@ hero = {"x": 0, "y": 0, "target_x": 0, "target_y": 0, "moving": False, "rotation
 hero_image = pygame.image.load("assets/hero.png")
 HERO_SPEED = 10
 
+pressed_keys = {"up": False, "down": False, "left": False, "right": False}
+
 
 def draw_map():
     for row_index, row in enumerate(map_config["rows"]):
@@ -56,19 +58,41 @@ def update_hero_position():
 
 
 def handle_keydown(event):
+    if event.key == pygame.K_UP:
+        pressed_keys["up"] = True
+        hero["rotation"] = 180
+    elif event.key == pygame.K_DOWN:
+        pressed_keys["down"] = True
+        hero["rotation"] = 0
+    elif event.key == pygame.K_LEFT:
+        pressed_keys["left"] = True
+        hero["rotation"] = -90
+    elif event.key == pygame.K_RIGHT:
+        pressed_keys["right"] = True
+        hero["rotation"] = 90
+
+
+def handle_keyup(event):
+    if event.key == pygame.K_UP:
+        pressed_keys["up"] = False
+    elif event.key == pygame.K_DOWN:
+        pressed_keys["down"] = False
+    elif event.key == pygame.K_LEFT:
+        pressed_keys["left"] = False
+    elif event.key == pygame.K_RIGHT:
+        pressed_keys["right"] = False
+
+
+def update_hero_target():
     if not hero["moving"]:
-        if event.key == pygame.K_UP:
+        if pressed_keys["up"]:
             hero["target_y"] -= 1
-            hero["rotation"] = 180
-        elif event.key == pygame.K_DOWN:
+        elif pressed_keys["down"]:
             hero["target_y"] += 1
-            hero["rotation"] = 0
-        elif event.key == pygame.K_LEFT:
+        elif pressed_keys["left"]:
             hero["target_x"] -= 1
-            hero["rotation"] = -90
-        elif event.key == pygame.K_RIGHT:
+        elif pressed_keys["right"]:
             hero["target_x"] += 1
-            hero["rotation"] = 90
 
         if hero["target_x"] != hero["x"] or hero["target_y"] != hero["y"]:
             hero["moving"] = True
@@ -82,7 +106,10 @@ while running:
             running = False
         elif event.type == pygame.KEYDOWN:
             handle_keydown(event)
+        elif event.type == pygame.KEYUP:
+            handle_keyup(event)
 
+    update_hero_target()
     update_hero_position()
     screen.fill((0, 0, 0))
     draw_map()
