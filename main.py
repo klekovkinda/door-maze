@@ -16,6 +16,8 @@ hero_image = pygame.image.load("assets/hero.png")
 HERO_SPEED = 10
 
 pressed_keys = {"up": False, "down": False, "left": False, "right": False}
+current_direction = None
+key_queue = []
 
 
 def draw_map():
@@ -58,40 +60,71 @@ def update_hero_position():
 
 
 def handle_keydown(event):
-    if event.key == pygame.K_UP:
-        pressed_keys["up"] = True
-        hero["rotation"] = 180
-    elif event.key == pygame.K_DOWN:
-        pressed_keys["down"] = True
-        hero["rotation"] = 0
-    elif event.key == pygame.K_LEFT:
-        pressed_keys["left"] = True
-        hero["rotation"] = -90
-    elif event.key == pygame.K_RIGHT:
-        pressed_keys["right"] = True
-        hero["rotation"] = 90
+    global current_direction
+    direction_map = {
+        pygame.K_UP: "up",
+        pygame.K_DOWN: "down",
+        pygame.K_LEFT: "left",
+        pygame.K_RIGHT: "right",
+    }
+    rotation_map = {
+        "up": 180,
+        "down": 0,
+        "left": -90,
+        "right": 90,
+    }
+
+    if event.key in direction_map:
+        direction = direction_map[event.key]
+        if direction not in key_queue:  # Avoid duplicate entries in the queue
+            key_queue.append(direction)
+
+        if current_direction is None:  # Start moving if no direction is active
+            current_direction = direction
+            hero["rotation"] = rotation_map[direction]
+            pressed_keys[direction] = True
 
 
 def handle_keyup(event):
-    if event.key == pygame.K_UP:
-        pressed_keys["up"] = False
-    elif event.key == pygame.K_DOWN:
-        pressed_keys["down"] = False
-    elif event.key == pygame.K_LEFT:
-        pressed_keys["left"] = False
-    elif event.key == pygame.K_RIGHT:
-        pressed_keys["right"] = False
+    global current_direction
+    direction_map = {
+        pygame.K_UP: "up",
+        pygame.K_DOWN: "down",
+        pygame.K_LEFT: "left",
+        pygame.K_RIGHT: "right",
+    }
+
+    if event.key in direction_map:
+        direction = direction_map[event.key]
+        if direction in key_queue:
+            key_queue.remove(direction)  # Remove the released key from the queue
+
+        if current_direction == direction:  # If the released key was the active direction
+            pressed_keys[direction] = False
+            current_direction = None
+
+            # Check the next key in the queue
+            if key_queue:
+                next_direction = key_queue[-1]  # Get the most recently pressed key
+                current_direction = next_direction
+                hero["rotation"] = {
+                    "up": 180,
+                    "down": 0,
+                    "left": -90,
+                    "right": 90,
+                }[next_direction]
+                pressed_keys[next_direction] = True
 
 
 def update_hero_target():
-    if not hero["moving"]:
-        if pressed_keys["up"]:
+    if not hero["moving"] and current_direction:
+        if current_direction == "up":
             hero["target_y"] -= 1
-        elif pressed_keys["down"]:
+        elif current_direction == "down":
             hero["target_y"] += 1
-        elif pressed_keys["left"]:
+        elif current_direction == "left":
             hero["target_x"] -= 1
-        elif pressed_keys["right"]:
+        elif current_direction == "right":
             hero["target_x"] += 1
 
         if hero["target_x"] != hero["x"] or hero["target_y"] != hero["y"]:
