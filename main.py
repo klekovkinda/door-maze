@@ -11,9 +11,10 @@ with open("config/map.yaml", "r") as file:
 TILE_SIZE = 100
 assets = {"flor": pygame.image.load("assets/flor.png"), "wall": pygame.image.load("assets/wall.png"), }
 
-hero = {"x": 0, "y": 0, "target_x": 0, "target_y": 0, "moving": False, "rotation": 0}
+hero = {"x": 0, "y": 0, "target_x": 0, "target_y": 0, "moving": False, "rotation": 0, "target_rotation": 0}
 hero_image = pygame.image.load("assets/hero.png")
 HERO_SPEED = 10
+HERO_ROTATION_SPEED = 10  # Degrees per frame for smooth rotation
 
 pressed_keys = {"up": False, "down": False, "left": False, "right": False}
 current_direction = None
@@ -29,34 +30,51 @@ def draw_map():
             rotation = tile["rotation"]
             rotated_tile = pygame.transform.rotate(assets[tile_type], rotation)
             screen.blit(rotated_tile, (x, y))
-    hero_x = hero["x"] * TILE_SIZE
-    hero_y = hero["y"] * TILE_SIZE
+
+    # Draw the hero with rotation centered on the tile
+    hero_center_x = hero["x"] * TILE_SIZE + TILE_SIZE // 2
+    hero_center_y = hero["y"] * TILE_SIZE + TILE_SIZE // 2
     rotated_hero = pygame.transform.rotate(hero_image, hero["rotation"])
-    screen.blit(rotated_hero, (hero_x, hero_y))
+    hero_rect = rotated_hero.get_rect(center=(hero_center_x, hero_center_y))
+    screen.blit(rotated_hero, hero_rect.topleft)
 
 
-def update_hero_position():
+def update_hero_position_and_rotation():
     if hero["moving"]:
-        current_x = hero["x"] * TILE_SIZE
-        current_y = hero["y"] * TILE_SIZE
-        target_x = hero["target_x"] * TILE_SIZE
-        target_y = hero["target_y"] * TILE_SIZE
-
-        dx = target_x - current_x
-        dy = target_y - current_y
-
-        if abs(dx) > HERO_SPEED:
-            hero["x"] += HERO_SPEED / TILE_SIZE if dx > 0 else -HERO_SPEED / TILE_SIZE
+        # Smooth rotation
+        target_rotation = hero["target_rotation"]
+        current_rotation = hero["rotation"]
+        rotation_diff = (target_rotation - current_rotation) % 360
+        if rotation_diff > 180:
+            rotation_diff -= 360
+        if abs(rotation_diff) > HERO_ROTATION_SPEED:
+            hero["rotation"] += HERO_ROTATION_SPEED if rotation_diff > 0 else -HERO_ROTATION_SPEED
+            hero["rotation"] %= 360
         else:
-            hero["x"] = hero["target_x"]
+            hero["rotation"] = target_rotation
 
-        if abs(dy) > HERO_SPEED:
-            hero["y"] += HERO_SPEED / TILE_SIZE if dy > 0 else -HERO_SPEED / TILE_SIZE
-        else:
-            hero["y"] = hero["target_y"]
+        # Only move after completing the rotation
+        if hero["rotation"] == target_rotation:
+            current_x = hero["x"] * TILE_SIZE
+            current_y = hero["y"] * TILE_SIZE
+            target_x = hero["target_x"] * TILE_SIZE
+            target_y = hero["target_y"] * TILE_SIZE
 
-        if hero["x"] == hero["target_x"] and hero["y"] == hero["target_y"]:
-            hero["moving"] = False
+            dx = target_x - current_x
+            dy = target_y - current_y
+
+            if abs(dx) > HERO_SPEED:
+                hero["x"] += HERO_SPEED / TILE_SIZE if dx > 0 else -HERO_SPEED / TILE_SIZE
+            else:
+                hero["x"] = hero["target_x"]
+
+            if abs(dy) > HERO_SPEED:
+                hero["y"] += HERO_SPEED / TILE_SIZE if dy > 0 else -HERO_SPEED / TILE_SIZE
+            else:
+                hero["y"] = hero["target_y"]
+
+            if hero["x"] == hero["target_x"] and hero["y"] == hero["target_y"]:
+                hero["moving"] = False
 
 
 def handle_keydown(event):
@@ -81,7 +99,7 @@ def handle_keydown(event):
 
         if current_direction is None:  # Start moving if no direction is active
             current_direction = direction
-            hero["rotation"] = rotation_map[direction]
+            hero["target_rotation"] = rotation_map[direction]  # Set target rotation
             pressed_keys[direction] = True
 
 
@@ -107,7 +125,7 @@ def handle_keyup(event):
             if key_queue:
                 next_direction = key_queue[-1]  # Get the most recently pressed key
                 current_direction = next_direction
-                hero["rotation"] = {
+                hero["target_rotation"] = {
                     "up": 180,
                     "down": 0,
                     "left": -90,
@@ -118,6 +136,7 @@ def handle_keyup(event):
 
 def update_hero_target():
     if not hero["moving"] and current_direction:
+        # Set the target position only if the hero is not moving
         if current_direction == "up":
             hero["target_y"] -= 1
         elif current_direction == "down":
@@ -127,6 +146,7 @@ def update_hero_target():
         elif current_direction == "right":
             hero["target_x"] += 1
 
+        # Start moving only if the target position is different
         if hero["target_x"] != hero["x"] or hero["target_y"] != hero["y"]:
             hero["moving"] = True
 
@@ -143,7 +163,7 @@ while running:
             handle_keyup(event)
 
     update_hero_target()
-    update_hero_position()
+    update_hero_position_and_rotation()
     screen.fill((0, 0, 0))
     draw_map()
     pygame.display.flip()
