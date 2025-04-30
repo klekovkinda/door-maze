@@ -11,8 +11,19 @@ with open("config/map.yaml", "r") as file:
 TILE_SIZE = 100
 assets = {"flor": pygame.image.load("assets/flor.png"), "wall": pygame.image.load("assets/wall.png"), }
 
-hero = {"x": 0, "y": 0, "target_x": 0, "target_y": 0, "moving": False, "rotation": 0, "target_rotation": 0}
-hero_image = pygame.image.load("assets/hero.png")
+hero_sprite_sheet = pygame.image.load("assets/hero-go.png").convert_alpha()
+HERO_FRAMES = []
+FRAME_COUNT = 10 #TODO seems 11 frames even better
+FRAME_WIDTH = hero_sprite_sheet.get_width() // FRAME_COUNT
+FRAME_HEIGHT = hero_sprite_sheet.get_height()
+
+for i in range(FRAME_COUNT):
+    frame = hero_sprite_sheet.subsurface(pygame.Rect(i * FRAME_WIDTH, 0, FRAME_WIDTH, FRAME_HEIGHT))
+    HERO_FRAMES.append(frame)
+
+hero = {"x": 0, "y": 0, "target_x": 0, "target_y": 0, "moving": False, "rotation": 0, "target_rotation": 0,
+        "frame_index": 0, }
+
 HERO_SPEED = 10
 HERO_ROTATION_SPEED = 10  # Degrees per frame for smooth rotation
 
@@ -31,10 +42,11 @@ def draw_map():
             rotated_tile = pygame.transform.rotate(assets[tile_type], rotation)
             screen.blit(rotated_tile, (x, y))
 
-    # Draw the hero with rotation centered on the tile
     hero_center_x = hero["x"] * TILE_SIZE + TILE_SIZE // 2
     hero_center_y = hero["y"] * TILE_SIZE + TILE_SIZE // 2
-    rotated_hero = pygame.transform.rotate(hero_image, hero["rotation"])
+
+    frame = HERO_FRAMES[hero["frame_index"]]
+    rotated_hero = pygame.transform.rotate(frame, hero["rotation"])
     hero_rect = rotated_hero.get_rect(center=(hero_center_x, hero_center_y))
     screen.blit(rotated_hero, hero_rect.topleft)
 
@@ -76,21 +88,16 @@ def update_hero_position_and_rotation():
             if hero["x"] == hero["target_x"] and hero["y"] == hero["target_y"]:
                 hero["moving"] = False
 
+            frame_index = HERO_SPEED - int(abs(dx / HERO_SPEED) + abs(dy / HERO_SPEED))
+
+            hero["frame_index"] = 0 if frame_index>=FRAME_COUNT else frame_index
+            print(hero["frame_index"])
+
 
 def handle_keydown(event):
     global current_direction
-    direction_map = {
-        pygame.K_UP: "up",
-        pygame.K_DOWN: "down",
-        pygame.K_LEFT: "left",
-        pygame.K_RIGHT: "right",
-    }
-    rotation_map = {
-        "up": 180,
-        "down": 0,
-        "left": -90,
-        "right": 90,
-    }
+    direction_map = {pygame.K_UP: "up", pygame.K_DOWN: "down", pygame.K_LEFT: "left", pygame.K_RIGHT: "right", }
+    rotation_map = {"up": 180, "down": 0, "left": -90, "right": 90, }
 
     if event.key in direction_map:
         direction = direction_map[event.key]
@@ -105,12 +112,7 @@ def handle_keydown(event):
 
 def handle_keyup(event):
     global current_direction
-    direction_map = {
-        pygame.K_UP: "up",
-        pygame.K_DOWN: "down",
-        pygame.K_LEFT: "left",
-        pygame.K_RIGHT: "right",
-    }
+    direction_map = {pygame.K_UP: "up", pygame.K_DOWN: "down", pygame.K_LEFT: "left", pygame.K_RIGHT: "right", }
 
     if event.key in direction_map:
         direction = direction_map[event.key]
@@ -125,18 +127,12 @@ def handle_keyup(event):
             if key_queue:
                 next_direction = key_queue[-1]  # Get the most recently pressed key
                 current_direction = next_direction
-                hero["target_rotation"] = {
-                    "up": 180,
-                    "down": 0,
-                    "left": -90,
-                    "right": 90,
-                }[next_direction]
+                hero["target_rotation"] = {"up": 180, "down": 0, "left": -90, "right": 90, }[next_direction]
                 pressed_keys[next_direction] = True
 
 
 def update_hero_target():
     if not hero["moving"] and current_direction:
-        # Set the target position only if the hero is not moving
         if current_direction == "up":
             hero["target_y"] -= 1
         elif current_direction == "down":
@@ -145,8 +141,6 @@ def update_hero_target():
             hero["target_x"] -= 1
         elif current_direction == "right":
             hero["target_x"] += 1
-
-        # Start moving only if the target position is different
         if hero["target_x"] != hero["x"] or hero["target_y"] != hero["y"]:
             hero["moving"] = True
 
@@ -167,6 +161,6 @@ while running:
     screen.fill((0, 0, 0))
     draw_map()
     pygame.display.flip()
-    clock.tick(60)
+    clock.tick(30)
 
 pygame.quit()
